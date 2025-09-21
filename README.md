@@ -1,5 +1,8 @@
 # capstone-data-science
-Capstone project for Data Science course: stock market prediction with machine learning
+useful link:
+https://www.kaggle.com/code/farzadnekouei/gold-price-prediction-lstm-96-accuracy
+https://www.kaggle.com/datasets/shreyanshdangi/gold-silver-price-vs-geopolitical-risk-19852025/code 
+https://www.kaggle.com/datasets/everydaycodings/global-news-dataset
 # CapstoTitle:
 Geopolitics and Commodities: Predicting Oil, Gold, and Wheat Price Movements with Machine Learning
 
