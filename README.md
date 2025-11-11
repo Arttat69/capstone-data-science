@@ -3,8 +3,11 @@ useful link:
 https://www.kaggle.com/code/farzadnekouei/gold-price-prediction-lstm-96-accuracy
 https://www.kaggle.com/datasets/shreyanshdangi/gold-silver-price-vs-geopolitical-risk-19852025/code 
 https://www.kaggle.com/datasets/everydaycodings/global-news-dataset
+
+https://www.kaggle.com/code/nilaychauhan/topic-modeling-of-news-articles-lda
+
 # CapstoTitle:
-Geopolitics and Commodities: Predicting Oil, Gold, and Wheat Price Movements with Machine Learning
+Geopolitics and Commodities: Predicting Oil, Gold, Wheat, Copper, Lithium and Natural Gas Price Movements with Machine Learning
 
 Abstract:
 Commodity markets are highly sensitive to geopolitical developments. Wars, sanctions, and policy decisions often trigger significant shifts in the prices of oil, gold, and agricultural goods. This project investigates whether machine learning methods can capture and predict these dynamics by combining financial time series with geopolitical context.
