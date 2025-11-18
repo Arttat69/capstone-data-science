@@ -574,6 +574,8 @@ for commodity, df in merged_data.items():
 
     print(f"Finished processing {commodity}\n")
 ######
+
+
 # LSTM sequence forecasting setup
 def mean_absolute_percentage_error(y_true, y_pred):
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
