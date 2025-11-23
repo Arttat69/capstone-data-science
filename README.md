@@ -193,8 +193,8 @@ Week 14: Finalize report, polish GitHub repo, submit.
 
 5. 💡 Bonus Ideas for Extra Points
 
-Add sentiment analysis from global news dataset using NLP (VADER or TextBlob).
 
 Use High-Performance Computing concepts (parallelize feature extraction or model training).
 
 Test models during different periods (e.g., stable vs crisis) → regime comparison.
+
