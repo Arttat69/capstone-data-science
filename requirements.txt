@@ -9,7 +9,7 @@ seaborn
 # Machine Learning
 scikit-learn
 
-# Deep Learning (optional, for Week 10+)
+# Deep Learning
 tensorflow
 
 # Jupyter Notebooks
