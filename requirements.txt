@@ -5,9 +5,11 @@ pandas
 # Visualization
 matplotlib
 seaborn
+vadersentiment
 
 # Machine Learning
 scikit-learn
+shap
 
 # Deep Learning
 tensorflow
