@@ -153,6 +153,7 @@ def main():
         regime_features = df[['Vol_5', 'GPRD', 'geo_keyword_hits']].fillna(0)
         df['Regime'] = kmeans.fit_predict(regime_features)
 
+
         # Store for LSTM in next cell
         train_dfs[commodity] = train_df
         test_dfs[commodity] = test_df
