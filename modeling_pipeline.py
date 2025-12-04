@@ -164,6 +164,108 @@ def main():
     # Save classical results (move to end if you want)
     results_df = pd.DataFrame(results).T
     results_df.to_csv(os.path.join(MODEL_RESULTS_DIR, 'classical_model_results.csv'))
+    ###
+    # Plot comparison RMSE for baseline LR and enhanced RF
+    ###
 
+    # --- Visualize RMSE for Regression Models ---
+    plt.figure(figsize=(10, 6))
+    results_df[['RMSE_baseline', 'RMSE_enhanced']].plot.bar(rot=45)
+    plt.title('RMSE Comparison: Baseline LR vs Enhanced RF')
+    plt.ylabel('RMSE')
+    plt.xlabel('Commodity')
+    plt.tight_layout()
+    plt.legend(['Baseline LR', 'Enhanced RF'])
+    plt.savefig(os.path.join(MODEL_RESULTS_DIR, 'rmse_comparison.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+
+    # --- (Optional) Bar Plot: Classification Accuracy for Each Commodity ---
+    accs = {}
+    for commodity in results_df.index:
+        if commodity not in test_dfs:
+            continue
+        test_df = test_dfs[commodity]
+        scaler = StandardScaler()
+        X_test_class = scaler.fit_transform(test_df[features_enhanced_dict[commodity]])
+        y_test_class = test_df['Return_binary']
+        logreg = LogisticRegression(max_iter=200)
+        X_train_class = scaler.fit_transform(train_dfs[commodity][features_enhanced_dict[commodity]])
+        y_train_class = train_dfs[commodity]['Return_binary']
+        logreg.fit(X_train_class, y_train_class)
+        y_pred_class = logreg.predict(X_test_class)
+        acc = accuracy_score(y_test_class, y_pred_class)
+        accs[commodity] = acc
+
+    if accs:
+        plt.figure(figsize=(12, 6))
+        sns.barplot(x=list(accs.keys()), y=list(accs.values()))
+        plt.title("Classification Accuracy: Logistic Regression")
+        plt.ylabel("Accuracy")
+        plt.xlabel("Commodity")
+        plt.ylim(0, 1)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(os.path.join(MODEL_RESULTS_DIR, 'classification_accuracy.png'), dpi=300, bbox_inches='tight')
+        plt.show()
+
+    # --- Visualize Clustering Regimes Distribution - SINGLE IMAGE FOR ALL COMMODITIES ---
+    regime_data = []
+    for commodity, df in merged_data.items():
+        if 'Regime' not in df.columns:
+            continue
+        regime_counts = df['Regime'].value_counts().sort_index()
+        for regime in regime_counts.index:
+            regime_data.append({
+                'Commodity': commodity,
+                'Regime': f"Regime {regime}",
+                'Percentage': regime_counts[regime] / len(df) * 100
+            })
+
+    regime_df = pd.DataFrame(regime_data)
+
+    # Create subplots: 2 rows, 3 columns = 6 commodities
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    axes = axes.ravel()
+
+    for i, commodity in enumerate(commodities):
+        if i >= len(axes):
+            break
+        ax = axes[i]
+
+        # Filter data for this commodity
+        commo_data = regime_df[regime_df['Commodity'] == commodity]
+
+        if not commo_data.empty:
+            colors = ['#1f77b4', '#ff7f0e']  # Blue for Regime 0, Orange for Regime 1
+            wedges, texts, autotexts = ax.pie(commo_data['Percentage'],
+                                              labels=commo_data['Regime'],
+                                              autopct='%1.1f%%',
+                                              colors=colors[:len(commo_data)],
+                                              startangle=90)
+            ax.set_title(f"{commodity}", fontsize=12, fontweight='bold')
+        else:
+            ax.text(0.5, 0.5, 'No Regime Data', ha='center', va='center')
+            ax.set_title(f"{commodity}", fontsize=12)
+
+        ax.axis('equal')
+
+    plt.suptitle(
+        'Market Regime Distribution Across All Commodities\n(Regime 0: Calm/Low-Risk | Regime 1: Stressed/High-Risk)',
+        fontsize=16, fontweight='bold', y=0.98)
+    plt.tight_layout()
+    plt.savefig(os.path.join(MODEL_RESULTS_DIR, 'all_commodities_regime_pie.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+
+    # --- Optional: Stacked Bar Alternative (shows % comparison clearly) ---
+    plt.figure(figsize=(12, 8))
+    sns.barplot(data=regime_df, x='Commodity', y='Percentage', hue='Regime', palette=['#1f77b4', '#ff7f0e'])
+    plt.title('Market Regime Distribution: % Time in Each Regime by Commodity')
+    plt.ylabel('Percentage of Days (%)')
+    plt.xlabel('Commodity')
+    plt.legend(title='Regime', labels=['Regime 0 (Calm)', 'Regime 1 (Stressed)'])
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig(os.path.join(MODEL_RESULTS_DIR, 'regime_stacked_bar.png'), dpi=300, bbox_inches='tight')
+    plt.show()
 if __name__ == "__main__":
     main()
