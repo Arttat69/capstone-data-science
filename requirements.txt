@@ -5,7 +5,7 @@ pandas
 # Visualization
 matplotlib
 seaborn
-vadersentiment
+
 
 # Machine Learning
 scikit-learn
@@ -16,3 +16,13 @@ tensorflow
 
 # Jupyter Notebooks
 jupyter
+
+# Data fetching
+yfinance
+
+# Time series testing
+statsmodels
+
+# Sentiment analysis
+textblob
+vaderSentiment

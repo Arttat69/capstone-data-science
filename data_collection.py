@@ -55,7 +55,6 @@ def main():
     download_kaggle("shreyanshdangi/gold-silver-price-vs-geopolitical-risk-19852025", RAW_DIR)
 
     # Assume GPR dataset is downloaded manually or via Kaggle if available. For this example, assume it's placed in RAW_DIR/All_Historical_Data_Separately/
-    # If GPR is from a Kaggle dataset, add download_kaggle here (e.g., if it's "someuser/gpr-dataset").
 
     # Functions for data processing
     def flatten_columns(df):
