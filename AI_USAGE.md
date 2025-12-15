@@ -39,12 +39,12 @@ This project was developed through iterative collaboration with AI tools, with a
 
 ### 3. LSTM Model Architecture (notebooks/03_modeling_pipeline.ipynb)
 **AI Contribution:**
-- Provided initial LSTM template with Keras Sequential API
 - Suggested Huber loss for volatility outlier robustness
 - Recommended early stopping and learning rate reduction callbacks
 - Helped diagnose memory allocation errors during initial runs
 
 **My Work:**
+- Researched LSTM implementation 
 - Determined final network architecture (32→16 for baseline, 24→8 for high-dimensional input)
 - Tuned hyperparameters: sequence length (15), batch size (32/64), regularization strength
 - Implemented dual-model experimental design (with/without GPRD)
@@ -132,4 +132,4 @@ The use of AI tools does not diminish the intellectual contribution required to:
 
 ---
 
-**Last Updated**: November 2024
+**Last Updated**: December 2025
