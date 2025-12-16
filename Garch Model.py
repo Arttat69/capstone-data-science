@@ -1,5 +1,6 @@
 # GARCH Volatility Modeling with Geopolitical Risk Features
-# Compares baseline GARCH vs GARCH with external regressors
+# FIXED VERSION: External regressors properly added to mean equation
+# Compares baseline GARCH vs GARCH with geopolitical predictors
 
 import os
 import pandas as pd
@@ -7,8 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from arch import arch_model
-from arch.univariate import GARCH, ConstantMean, Normal
+from arch.univariate import ConstantMean, GARCH, Normal, ARX
 from scipy import stats
+from scipy.stats import chi2
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -22,14 +24,24 @@ os.makedirs(GARCH_RESULTS_DIR, exist_ok=True)
 
 commodities = ["Gold", "WTI", "Wheat", "NaturalGas", "Copper", "Lithium"]
 
+# Commodity categories for interpretation
+COMMODITY_CATEGORIES = {
+    'Energy': ['WTI', 'NaturalGas'],
+    'Precious Metals': ['Gold'],
+    'Industrial Metals': ['Copper', 'Lithium'],
+    'Agriculture': ['Wheat']
+}
+
 print("=" * 80)
 print("GARCH VOLATILITY MODELING WITH GEOPOLITICAL FEATURES")
 print("=" * 80)
 print("Models:")
-print("  1. Baseline GARCH(1,1)")
-print("  2. GARCH(1,1) + geo_keyword_hits")
-print("  3. GARCH(1,1) + GPRD")
-print("  4. GARCH(1,1) + geo_keyword_hits + GPRD")
+print("  1. Baseline: Return_t = μ + ε_t, ε_t ~ GARCH(1,1)")
+print("  2. Return_t = μ + β₁*geo_keyword_hits_t + ε_t, ε_t ~ GARCH(1,1)")
+print("  3. Return_t = μ + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
+print("  4. Return_t = μ + β₁*geo_t + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
+print("=" * 80)
+print("Testing: Do geopolitical factors predict commodity returns?")
 print("=" * 80)
 
 
@@ -75,7 +87,9 @@ def prepare_returns(df):
 
 def fit_garch_model(returns, external_regressors=None, model_name="Baseline"):
     """
-    Fit GARCH(1,1) model with optional external regressors
+    Fit GARCH(1,1) model with optional external regressors in MEAN equation
+
+    Model: Return_t = μ + β*X_t + ε_t, where ε_t ~ GARCH(1,1)
 
     Args:
         returns: Return series (in percentage)
@@ -102,15 +116,24 @@ def fit_garch_model(returns, external_regressors=None, model_name="Baseline"):
     # Build model
     try:
         if X_clean is not None and len(X_clean.columns) > 0:
-            # GARCH with external regressors in variance equation
-            model = arch_model(returns_clean, vol='GARCH', p=1, q=1,
-                               x=X_clean, rescale=False)
-        else:
-            # Baseline GARCH
-            model = arch_model(returns_clean, vol='GARCH', p=1, q=1, rescale=False)
+            # Use ARX (AutoRegressive with eXogenous variables) for mean equation
+            # ARX(0, x=...) means no autoregressive terms, just exogenous variables + constant
+            mean_model = ARX(returns_clean, lags=0, x=X_clean, constant=True)
 
-        # Fit model
-        result = model.fit(disp='off', show_warning=False)
+            # Add GARCH(1,1) volatility
+            mean_model.volatility = GARCH(p=1, q=1)
+            mean_model.distribution = Normal()
+
+            # Fit model
+            result = mean_model.fit(disp='off', show_warning=False)
+        else:
+            # Baseline: Constant mean + GARCH(1,1)
+            mean_model = ConstantMean(returns_clean)
+            mean_model.volatility = GARCH(p=1, q=1)
+            mean_model.distribution = Normal()
+
+            # Fit model
+            result = mean_model.fit(disp='off', show_warning=False)
 
         return result
 
@@ -119,32 +142,9 @@ def fit_garch_model(returns, external_regressors=None, model_name="Baseline"):
         return None
 
 
-def forecast_volatility(model_result, horizon=5):
-    """
-    Generate volatility forecast
-
-    Args:
-        model_result: Fitted GARCH model
-        horizon: Forecast horizon in days
-
-    Returns:
-        Forecast DataFrame
-    """
-    try:
-        forecast = model_result.forecast(horizon=horizon, reindex=False)
-        return forecast
-    except:
-        return None
-
-
 def calculate_metrics(returns, fitted_vol, actual_vol=None):
     """
-    Calculate performance metrics
-
-    Args:
-        returns: Actual returns
-        fitted_vol: Fitted/forecasted volatility from model
-        actual_vol: Actual realized volatility (if available)
+    Calculate performance metrics with improved QLIKE handling
     """
     # Align series
     common_idx = returns.index.intersection(fitted_vol.index)
@@ -154,17 +154,43 @@ def calculate_metrics(returns, fitted_vol, actual_vol=None):
     # Calculate squared returns as proxy for realized variance
     realized_var = returns_aligned ** 2
 
+    # Add small epsilon to prevent division by zero
+    epsilon = 1e-8
+    vol_aligned_safe = np.maximum(vol_aligned, epsilon)
+    realized_var_safe = np.maximum(realized_var, epsilon)
+
     # Mean Squared Error
     mse = np.mean((realized_var - vol_aligned ** 2) ** 2)
 
-    # Log-likelihood (approximation)
-    ll = -0.5 * np.sum(np.log(2 * np.pi * vol_aligned ** 2) + realized_var / vol_aligned ** 2)
+    # Root Mean Squared Error (more interpretable)
+    rmse = np.sqrt(mse)
 
-    # QLIKE (Quasi-Likelihood)
-    qlike = np.mean(realized_var / vol_aligned ** 2 - np.log(realized_var / vol_aligned ** 2) - 1)
+    # Mean Absolute Error
+    mae = np.mean(np.abs(returns_aligned - 0))
+
+    # Log-likelihood (approximation)
+    try:
+        ll = -0.5 * np.sum(np.log(2 * np.pi * vol_aligned_safe ** 2) + realized_var / vol_aligned_safe ** 2)
+        if np.isinf(ll) or np.isnan(ll):
+            ll = np.nan
+    except:
+        ll = np.nan
+
+    # QLIKE (Quasi-Likelihood) with safety checks
+    try:
+        qlike_terms = realized_var_safe / vol_aligned_safe ** 2 - np.log(realized_var_safe / vol_aligned_safe ** 2) - 1
+        qlike_terms_clean = qlike_terms[np.isfinite(qlike_terms)]
+        if len(qlike_terms_clean) > 0:
+            qlike = np.mean(qlike_terms_clean)
+        else:
+            qlike = np.nan
+    except:
+        qlike = np.nan
 
     return {
         'MSE': mse,
+        'RMSE': rmse,
+        'MAE': mae,
         'LogLik': ll,
         'QLIKE': qlike
     }
@@ -191,7 +217,7 @@ def run_garch_analysis(commodity_name, df):
 
     # Remove NaN and extreme outliers
     returns = returns.dropna()
-    returns = returns[(returns.abs() < returns.abs().quantile(0.99))]  # Remove extreme outliers
+    returns = returns[(returns.abs() < returns.abs().quantile(0.99))]
 
     print(f"  Data: {len(returns)} observations")
     print(f"  Return stats: Mean={returns.mean():.4f}%, Std={returns.std():.4f}%")
@@ -225,33 +251,12 @@ def run_garch_analysis(commodity_name, df):
                                      model_name="Baseline")
 
     if model_baseline:
-        # In-sample fit
         fitted_vol = model_baseline.conditional_volatility
         metrics_is = calculate_metrics(returns_train, fitted_vol)
 
-        # Out-of-sample forecast
-        try:
-            # Rolling forecast on test set
-            forecast_vols = []
-            for i in range(len(returns_test)):
-                # Refit model on expanding window
-                train_window = returns.iloc[:split_idx + i]
-                model_temp = fit_garch_model(train_window, external_regressors=None,
-                                             model_name="Baseline_rolling")
-                if model_temp:
-                    forecast = model_temp.forecast(horizon=1, reindex=False)
-                    forecast_vols.append(np.sqrt(forecast.variance.values[-1, 0]))
-                else:
-                    forecast_vols.append(np.nan)
-
-            forecast_vol_series = pd.Series(forecast_vols, index=returns_test.index)
-            metrics_oos = calculate_metrics(returns_test, forecast_vol_series)
-        except:
-            metrics_oos = {'MSE': np.nan, 'LogLik': np.nan, 'QLIKE': np.nan}
-
-        print(f"    In-sample QLIKE: {metrics_is['QLIKE']:.4f}")
-        print(f"    Out-of-sample QLIKE: {metrics_oos['QLIKE']:.4f}")
+        print(f"    In-sample RMSE: {metrics_is['RMSE']:.4f} | QLIKE: {metrics_is['QLIKE']:.4f}")
         print(f"    AIC: {model_baseline.aic:.2f} | BIC: {model_baseline.bic:.2f}")
+        print(f"    Number of parameters: {len(model_baseline.params)}")
 
         results.append({
             'commodity': commodity_name,
@@ -259,9 +264,13 @@ def run_garch_analysis(commodity_name, df):
             'AIC': model_baseline.aic,
             'BIC': model_baseline.bic,
             'LogLik': model_baseline.loglikelihood,
+            'RMSE_in_sample': metrics_is['RMSE'],
             'QLIKE_in_sample': metrics_is['QLIKE'],
-            'QLIKE_out_of_sample': metrics_oos['QLIKE'],
-            'n_params': len(model_baseline.params)
+            'n_params': len(model_baseline.params),
+            'geo_coef': np.nan,
+            'geo_pval': np.nan,
+            'gprd_coef': np.nan,
+            'gprd_pval': np.nan
         })
 
         fitted_models['baseline'] = model_baseline
@@ -277,44 +286,20 @@ def run_garch_analysis(commodity_name, df):
             fitted_vol = model_geo.conditional_volatility
             metrics_is = calculate_metrics(returns_train, fitted_vol)
 
-            # Out-of-sample forecast (simplified - using last model)
-            try:
-                forecast_vols = []
-                for i in range(min(50, len(returns_test))):  # Limit to 50 for speed
-                    train_window = returns.iloc[:split_idx + i]
-                    X_window = pd.DataFrame({'geo': X_geo.iloc[:split_idx + i]},
-                                            index=train_window.index)
-                    model_temp = fit_garch_model(train_window, external_regressors=X_window,
-                                                 model_name="GEO_rolling")
-                    if model_temp:
-                        forecast = model_temp.forecast(horizon=1, reindex=False)
-                        forecast_vols.append(np.sqrt(forecast.variance.values[-1, 0]))
-                    else:
-                        forecast_vols.append(np.nan)
-
-                forecast_vol_series = pd.Series(forecast_vols,
-                                                index=returns_test.index[:len(forecast_vols)])
-                metrics_oos = calculate_metrics(returns_test.iloc[:len(forecast_vols)],
-                                                forecast_vol_series)
-            except:
-                metrics_oos = {'MSE': np.nan, 'LogLik': np.nan, 'QLIKE': np.nan}
-
-            print(f"    In-sample QLIKE: {metrics_is['QLIKE']:.4f}")
-            print(f"    Out-of-sample QLIKE: {metrics_oos['QLIKE']:.4f}")
+            print(f"    In-sample RMSE: {metrics_is['RMSE']:.4f} | QLIKE: {metrics_is['QLIKE']:.4f}")
             print(f"    AIC: {model_geo.aic:.2f} | BIC: {model_geo.bic:.2f}")
+            print(f"    Number of parameters: {len(model_geo.params)}")
 
-            # Check if geo coefficient is significant
-            geo_param = None
-            geo_pval = None
+            # Extract geo coefficient and p-value
+            geo_param = np.nan
+            geo_pval = np.nan
             for param_name in model_geo.params.index:
-                if 'geo' in param_name.lower():
+                if 'geo' in param_name.lower() and 'gprd' not in param_name.lower():
                     geo_param = model_geo.params[param_name]
                     geo_pval = model_geo.pvalues[param_name]
+                    sig_marker = '✓ SIGNIFICANT' if geo_pval < 0.05 else '✗ Not significant'
+                    print(f"    geo coefficient: {geo_param:.6f} (p={geo_pval:.4f}) {sig_marker}")
                     break
-
-            if geo_param is not None:
-                sig_marker = '✓' if geo_pval < 0.05 else '✗'
-                print(f"    geo coefficient: {geo_param:.6f} (p={geo_pval:.3f}) {sig_marker}")
 
             results.append({
                 'commodity': commodity_name,
@@ -322,11 +307,13 @@ def run_garch_analysis(commodity_name, df):
                 'AIC': model_geo.aic,
                 'BIC': model_geo.bic,
                 'LogLik': model_geo.loglikelihood,
+                'RMSE_in_sample': metrics_is['RMSE'],
                 'QLIKE_in_sample': metrics_is['QLIKE'],
-                'QLIKE_out_of_sample': metrics_oos['QLIKE'],
                 'n_params': len(model_geo.params),
-                'geo_coef': geo_param if geo_param is not None else np.nan,
-                'geo_pval': geo_pval if geo_pval is not None else np.nan
+                'geo_coef': geo_param,
+                'geo_pval': geo_pval,
+                'gprd_coef': np.nan,
+                'gprd_pval': np.nan
             })
 
             fitted_models['geo'] = model_geo
@@ -342,44 +329,20 @@ def run_garch_analysis(commodity_name, df):
             fitted_vol = model_gprd.conditional_volatility
             metrics_is = calculate_metrics(returns_train, fitted_vol)
 
-            # Out-of-sample forecast (simplified)
-            try:
-                forecast_vols = []
-                for i in range(min(50, len(returns_test))):
-                    train_window = returns.iloc[:split_idx + i]
-                    X_window = pd.DataFrame({'gprd': X_gprd.iloc[:split_idx + i]},
-                                            index=train_window.index)
-                    model_temp = fit_garch_model(train_window, external_regressors=X_window,
-                                                 model_name="GPRD_rolling")
-                    if model_temp:
-                        forecast = model_temp.forecast(horizon=1, reindex=False)
-                        forecast_vols.append(np.sqrt(forecast.variance.values[-1, 0]))
-                    else:
-                        forecast_vols.append(np.nan)
-
-                forecast_vol_series = pd.Series(forecast_vols,
-                                                index=returns_test.index[:len(forecast_vols)])
-                metrics_oos = calculate_metrics(returns_test.iloc[:len(forecast_vols)],
-                                                forecast_vol_series)
-            except:
-                metrics_oos = {'MSE': np.nan, 'LogLik': np.nan, 'QLIKE': np.nan}
-
-            print(f"    In-sample QLIKE: {metrics_is['QLIKE']:.4f}")
-            print(f"    Out-of-sample QLIKE: {metrics_oos['QLIKE']:.4f}")
+            print(f"    In-sample RMSE: {metrics_is['RMSE']:.4f} | QLIKE: {metrics_is['QLIKE']:.4f}")
             print(f"    AIC: {model_gprd.aic:.2f} | BIC: {model_gprd.bic:.2f}")
+            print(f"    Number of parameters: {len(model_gprd.params)}")
 
-            # Check if GPRD coefficient is significant
-            gprd_param = None
-            gprd_pval = None
+            # Extract GPRD coefficient and p-value
+            gprd_param = np.nan
+            gprd_pval = np.nan
             for param_name in model_gprd.params.index:
                 if 'gprd' in param_name.lower():
                     gprd_param = model_gprd.params[param_name]
                     gprd_pval = model_gprd.pvalues[param_name]
+                    sig_marker = '✓ SIGNIFICANT' if gprd_pval < 0.05 else '✗ Not significant'
+                    print(f"    GPRD coefficient: {gprd_param:.6f} (p={gprd_pval:.4f}) {sig_marker}")
                     break
-
-            if gprd_param is not None:
-                sig_marker = '✓' if gprd_pval < 0.05 else '✗'
-                print(f"    GPRD coefficient: {gprd_param:.6f} (p={gprd_pval:.3f}) {sig_marker}")
 
             results.append({
                 'commodity': commodity_name,
@@ -387,11 +350,13 @@ def run_garch_analysis(commodity_name, df):
                 'AIC': model_gprd.aic,
                 'BIC': model_gprd.bic,
                 'LogLik': model_gprd.loglikelihood,
+                'RMSE_in_sample': metrics_is['RMSE'],
                 'QLIKE_in_sample': metrics_is['QLIKE'],
-                'QLIKE_out_of_sample': metrics_oos['QLIKE'],
                 'n_params': len(model_gprd.params),
-                'gprd_coef': gprd_param if gprd_param is not None else np.nan,
-                'gprd_pval': gprd_pval if gprd_pval is not None else np.nan
+                'geo_coef': np.nan,
+                'geo_pval': np.nan,
+                'gprd_coef': gprd_param,
+                'gprd_pval': gprd_pval
             })
 
             fitted_models['gprd'] = model_gprd
@@ -411,33 +376,27 @@ def run_garch_analysis(commodity_name, df):
             fitted_vol = model_combined.conditional_volatility
             metrics_is = calculate_metrics(returns_train, fitted_vol)
 
-            # Out-of-sample forecast (simplified - using last 20 points for speed)
-            try:
-                forecast_vols = []
-                for i in range(min(20, len(returns_test))):
-                    train_window = returns.iloc[:split_idx + i]
-                    X_window = pd.DataFrame({
-                        'geo': X_geo.iloc[:split_idx + i],
-                        'gprd': X_gprd.iloc[:split_idx + i]
-                    }, index=train_window.index)
-                    model_temp = fit_garch_model(train_window, external_regressors=X_window,
-                                                 model_name="Combined_rolling")
-                    if model_temp:
-                        forecast = model_temp.forecast(horizon=1, reindex=False)
-                        forecast_vols.append(np.sqrt(forecast.variance.values[-1, 0]))
-                    else:
-                        forecast_vols.append(np.nan)
-
-                forecast_vol_series = pd.Series(forecast_vols,
-                                                index=returns_test.index[:len(forecast_vols)])
-                metrics_oos = calculate_metrics(returns_test.iloc[:len(forecast_vols)],
-                                                forecast_vol_series)
-            except:
-                metrics_oos = {'MSE': np.nan, 'LogLik': np.nan, 'QLIKE': np.nan}
-
-            print(f"    In-sample QLIKE: {metrics_is['QLIKE']:.4f}")
-            print(f"    Out-of-sample QLIKE: {metrics_oos['QLIKE']:.4f}")
+            print(f"    In-sample RMSE: {metrics_is['RMSE']:.4f} | QLIKE: {metrics_is['QLIKE']:.4f}")
             print(f"    AIC: {model_combined.aic:.2f} | BIC: {model_combined.bic:.2f}")
+            print(f"    Number of parameters: {len(model_combined.params)}")
+
+            # Extract both coefficients
+            geo_param = np.nan
+            geo_pval = np.nan
+            gprd_param = np.nan
+            gprd_pval = np.nan
+
+            for param_name in model_combined.params.index:
+                if 'geo' in param_name.lower() and 'gprd' not in param_name.lower():
+                    geo_param = model_combined.params[param_name]
+                    geo_pval = model_combined.pvalues[param_name]
+                    sig_marker = '✓ SIGNIFICANT' if geo_pval < 0.05 else '✗ Not significant'
+                    print(f"    geo coefficient: {geo_param:.6f} (p={geo_pval:.4f}) {sig_marker}")
+                elif 'gprd' in param_name.lower():
+                    gprd_param = model_combined.params[param_name]
+                    gprd_pval = model_combined.pvalues[param_name]
+                    sig_marker = '✓ SIGNIFICANT' if gprd_pval < 0.05 else '✗ Not significant'
+                    print(f"    GPRD coefficient: {gprd_param:.6f} (p={gprd_pval:.4f}) {sig_marker}")
 
             results.append({
                 'commodity': commodity_name,
@@ -445,9 +404,13 @@ def run_garch_analysis(commodity_name, df):
                 'AIC': model_combined.aic,
                 'BIC': model_combined.bic,
                 'LogLik': model_combined.loglikelihood,
+                'RMSE_in_sample': metrics_is['RMSE'],
                 'QLIKE_in_sample': metrics_is['QLIKE'],
-                'QLIKE_out_of_sample': metrics_oos['QLIKE'],
-                'n_params': len(model_combined.params)
+                'n_params': len(model_combined.params),
+                'geo_coef': geo_param,
+                'geo_pval': geo_pval,
+                'gprd_coef': gprd_param,
+                'gprd_pval': gprd_pval
             })
 
             fitted_models['combined'] = model_combined
@@ -466,9 +429,7 @@ def run_garch_analysis(commodity_name, df):
 # ============================================================================
 
 def plot_garch_comparison(commodity, analysis_results):
-    """
-    Create visualization comparing GARCH models
-    """
+    """Create visualization comparing GARCH models"""
     models = analysis_results['models']
     returns_train = analysis_results['returns_train']
 
@@ -528,7 +489,6 @@ def plot_garch_comparison(commodity, analysis_results):
     results_df = pd.DataFrame(analysis_results['results'])
 
     if len(results_df) > 0:
-        # Plot AIC comparison
         x = np.arange(len(results_df))
         width = 0.35
 
@@ -548,6 +508,14 @@ def plot_garch_comparison(commodity, analysis_results):
     plt.savefig(os.path.join(GARCH_RESULTS_DIR, f'{commodity}_garch_comparison.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
+
+
+def get_commodity_category(commodity_name):
+    """Get the category for a commodity"""
+    for category, commodities in COMMODITY_CATEGORIES.items():
+        if commodity_name in commodities:
+            return category
+    return "Other"
 
 
 # ============================================================================
@@ -588,42 +556,201 @@ def main():
         print("SUMMARY: GARCH Model Comparison")
         print("=" * 80)
 
-        display_cols = ['commodity', 'model', 'AIC', 'BIC', 'QLIKE_in_sample',
-                        'QLIKE_out_of_sample']
+        display_cols = ['commodity', 'model', 'AIC', 'BIC', 'n_params', 'RMSE_in_sample']
         print(results_df[display_cols].to_string(index=False))
 
         # Find best model per commodity
         print("\n" + "=" * 80)
-        print("Best Model by Commodity (by AIC)")
+        print("BEST MODELS BY COMMODITY (by AIC)")
         print("=" * 80)
 
         best_models = results_df.loc[results_df.groupby('commodity')['AIC'].idxmin()]
-        print(best_models[['commodity', 'model', 'AIC']].to_string(index=False))
+        print(best_models[['commodity', 'model', 'AIC', 'n_params']].to_string(index=False))
 
-        # Check if geopolitical features are significant
+        # Calculate AIC improvements
         print("\n" + "=" * 80)
-        print("Geopolitical Feature Significance")
+        print("AIC IMPROVEMENTS (Baseline vs Best Geopolitical Model)")
         print("=" * 80)
+
+        for commodity in results_df['commodity'].unique():
+            commodity_results = results_df[results_df['commodity'] == commodity]
+            baseline_aic = commodity_results[commodity_results['model'] == 'Baseline GARCH(1,1)']['AIC'].values
+            geo_models = commodity_results[commodity_results['model'] != 'Baseline GARCH(1,1)']
+
+            if len(baseline_aic) > 0 and len(geo_models) > 0:
+                best_geo_aic = geo_models['AIC'].min()
+                improvement = baseline_aic[0] - best_geo_aic
+                improvement_pct = (improvement / baseline_aic[0]) * 100
+
+                category = get_commodity_category(commodity)
+                print(f"{commodity:12s} ({category:18s}): AIC improved by {improvement:7.2f} ({improvement_pct:5.2f}%)")
+
+        # LIKELIHOOD RATIO TESTS
+        print("\n" + "=" * 80)
+        print("LIKELIHOOD RATIO TESTS (Joint Significance)")
+        print("=" * 80)
+        print("Testing: Do geopolitical variables jointly improve model fit?")
+        print("H0: Geopolitical variables have no effect (β = 0)")
+        print("H1: Geopolitical variables affect returns (β ≠ 0)")
+        print("-" * 80)
+
+        lr_results = []
+
+        for commodity in results_df['commodity'].unique():
+            commodity_results = results_df[results_df['commodity'] == commodity]
+
+            baseline = commodity_results[commodity_results['model'] == 'Baseline GARCH(1,1)']
+            if len(baseline) == 0:
+                continue
+
+            baseline_loglik = baseline['LogLik'].values[0]
+            baseline_params = baseline['n_params'].values[0]
+
+            geo_models = commodity_results[commodity_results['model'] != 'Baseline GARCH(1,1)']
+
+            for _, geo_model in geo_models.iterrows():
+                geo_loglik = geo_model['LogLik']
+                geo_params = geo_model['n_params']
+
+                LR_stat = 2 * (geo_loglik - baseline_loglik)
+                df = geo_params - baseline_params
+
+                if LR_stat > 0 and df > 0:
+                    p_value = chi2.sf(LR_stat, df)
+                else:
+                    p_value = np.nan
+
+                if not np.isnan(p_value):
+                    if p_value < 0.001:
+                        sig_level = '***'
+                        interpretation = 'Highly Significant'
+                    elif p_value < 0.01:
+                        sig_level = '**'
+                        interpretation = 'Significant'
+                    elif p_value < 0.05:
+                        sig_level = '*'
+                        interpretation = 'Significant'
+                    elif p_value < 0.10:
+                        sig_level = '.'
+                        interpretation = 'Marginally Significant'
+                    else:
+                        sig_level = ''
+                        interpretation = 'Not Significant'
+                else:
+                    sig_level = ''
+                    interpretation = 'N/A'
+
+                lr_results.append({
+                    'commodity': commodity,
+                    'model': geo_model['model'],
+                    'LR_statistic': LR_stat,
+                    'df': df,
+                    'p_value': p_value,
+                    'significance': sig_level,
+                    'interpretation': interpretation
+                })
+
+                model_name = geo_model['model'].replace('GARCH + ', '')
+                print(f"{commodity:12s} | {model_name:25s} | LR={LR_stat:8.3f} (df={df}) | p={p_value:.4f} {sig_level:3s} | {interpretation}")
+
+        if len(lr_results) > 0:
+            lr_df = pd.DataFrame(lr_results)
+            lr_df.to_csv(os.path.join(GARCH_RESULTS_DIR, 'likelihood_ratio_tests.csv'), index=False)
+
+        print("\n" + "-" * 80)
+        print("Significance codes: *** p<0.001, ** p<0.01, * p<0.05, . p<0.10")
+        print("-" * 80)
+
+        if len(lr_results) > 0:
+            lr_df = pd.DataFrame(lr_results)
+
+            n_highly_sig = len(lr_df[lr_df['p_value'] < 0.001])
+            n_sig = len(lr_df[lr_df['p_value'] < 0.05])
+            n_marginal = len(lr_df[(lr_df['p_value'] >= 0.05) & (lr_df['p_value'] < 0.10)])
+            n_not_sig = len(lr_df[lr_df['p_value'] >= 0.10])
+
+            print(f"\nSummary of {len(lr_df)} model comparisons:")
+            print(f"  Highly significant (p < 0.001): {n_highly_sig}")
+            print(f"  Significant (p < 0.05):         {n_sig}")
+            print(f"  Marginally significant (p < 0.10): {n_marginal}")
+            print(f"  Not significant (p >= 0.10):    {n_not_sig}")
+
+            sig_commodities = lr_df[lr_df['p_value'] < 0.05]['commodity'].unique()
+            if len(sig_commodities) > 0:
+                print(f"\n✓ Geopolitical variables are JOINTLY SIGNIFICANT for: {', '.join(sig_commodities)}")
+            else:
+                print(f"\n✗ Geopolitical variables are not jointly significant at p<0.05 for any commodity")
+
+        # Individual coefficient significance
+        print("\n" + "=" * 80)
+        print("INDIVIDUAL COEFFICIENT SIGNIFICANCE")
+        print("=" * 80)
+
+        geo_significant = []
+        gprd_significant = []
 
         for _, row in results_df.iterrows():
-            if 'geo_pval' in row and not pd.isna(row['geo_pval']):
-                sig = '✓ SIGNIFICANT' if row['geo_pval'] < 0.05 else '✗ Not significant'
-                print(f"{row['commodity']:12s} | geo_keyword_hits: {sig} (p={row['geo_pval']:.3f})")
-            if 'gprd_pval' in row and not pd.isna(row['gprd_pval']):
-                sig = '✓ SIGNIFICANT' if row['gprd_pval'] < 0.05 else '✗ Not significant'
-                print(f"{row['commodity']:12s} | GPRD: {sig} (p={row['gprd_pval']:.3f})")
+            if not pd.isna(row['geo_pval']):
+                is_sig = row['geo_pval'] < 0.05
+                sig_marker = '✓ SIGNIFICANT' if is_sig else '✗ Not significant'
+                print(f"{row['commodity']:12s} | geo_keyword_hits: {sig_marker:17s} | coef={row['geo_coef']:8.5f}, p={row['geo_pval']:.4f}")
+                if is_sig:
+                    geo_significant.append(row['commodity'])
+
+            if not pd.isna(row['gprd_pval']):
+                is_sig = row['gprd_pval'] < 0.05
+                sig_marker = '✓ SIGNIFICANT' if is_sig else '✗ Not significant'
+                print(f"{row['commodity']:12s} | GPRD:             {sig_marker:17s} | coef={row['gprd_coef']:8.5f}, p={row['gprd_pval']:.4f}")
+                if is_sig:
+                    gprd_significant.append(row['commodity'])
 
         print("\n" + "=" * 80)
-        print("ANALYSIS COMPLETE!")
+        print("SIGNIFICANCE SUMMARY")
         print("=" * 80)
+
+        if len(geo_significant) > 0:
+            print(f"\n✓ geo_keyword_hits is SIGNIFICANT for: {', '.join(set(geo_significant))}")
+        else:
+            print("\n✗ geo_keyword_hits is NOT individually significant for any commodity")
+
+        if len(gprd_significant) > 0:
+            print(f"✓ GPRD is SIGNIFICANT for: {', '.join(set(gprd_significant))}")
+        else:
+            print("✗ GPRD is NOT individually significant for any commodity")
+
+        # Sector analysis
+        print("\n" + "=" * 80)
+        print("SECTOR-SPECIFIC GEOPOLITICAL SENSITIVITY")
+        print("=" * 80)
+
+        for category, comm_list in COMMODITY_CATEGORIES.items():
+            category_improvements = []
+            for commodity in comm_list:
+                if commodity in results_df['commodity'].values:
+                    commodity_results = results_df[results_df['commodity'] == commodity]
+                    baseline_aic = commodity_results[commodity_results['model'] == 'Baseline GARCH(1,1)']['AIC'].values
+                    geo_models = commodity_results[commodity_results['model'] != 'Baseline GARCH(1,1)']
+
+                    if len(baseline_aic) > 0 and len(geo_models) > 0:
+                        best_geo_aic = geo_models['AIC'].min()
+                        improvement = baseline_aic[0] - best_geo_aic
+                        category_improvements.append(improvement)
+
+            if len(category_improvements) > 0:
+                avg_improvement = np.mean(category_improvements)
+                print(f"{category:20s}: Average AIC improvement = {avg_improvement:7.2f}")
+
+        print("\n" + "="*80)
+        print("ANALYSIS COMPLETE!")
+        print("="*80)
         print(f"Results saved to: {GARCH_RESULTS_DIR}")
         print("  - garch_comparison_results.csv")
+        print("  - likelihood_ratio_tests.csv")
         print("  - [Commodity]_garch_comparison.png (visualizations)")
-        print("=" * 80)
+        print("="*80)
 
     else:
         print("\n✗ No successful GARCH models fitted!")
-
 
 if __name__ == "__main__":
     main()
