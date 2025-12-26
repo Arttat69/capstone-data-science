@@ -10,6 +10,8 @@ seaborn
 # Machine Learning
 scikit-learn
 shap
+arch
+
 
 # Deep Learning
 tensorflow

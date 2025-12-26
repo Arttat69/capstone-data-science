@@ -398,14 +398,8 @@ def main():
     print("The absence of pooled significance is itself a finding:")
     print("GPRD exhibits HETEROGENEOUS effects by commodity class.")
     print()
-    print("Energy commodities show statistically significant improvements (p=0.04),")
-    print("while industrial metals demonstrate negative correlation. This suggests")
-    print("geopolitical risk operates through supply-side shocks affecting energy")
-    print("markets, but introduces noise for demand-driven industrial commodities.")
-    print()
-    print("This heterogeneity explains contradictory findings in prior literature")
-    print("and provides actionable feature selection guidance: use GPRD for energy")
-    print("forecasting, exclude for industrial metals, optional for agriculture.")
+    print("Public GPRD data provides no systematic trading advantage (p = 0.887).")
+    print("The only exception is Lithium (+63%) - an emerging, less-liquid market where information diffuses slowly.")
     print("=" * 80)
 
 

@@ -5,7 +5,6 @@ import yfinance as yf
 from datetime import datetime
 import subprocess
 
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # Set paths
 ROOT = os.getcwd()
