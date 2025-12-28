@@ -4,6 +4,12 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime
 import subprocess
+from nltk.sentiment import SentimentIntensityAnalyzer
+import nltk
+
+# Download VADER lexicon (only needs to run once)
+nltk.download('vader_lexicon')
+
 
 
 # Set paths
@@ -277,7 +283,7 @@ def main():
         df_merge.to_csv(os.path.join(ENRICHED_DIR, fname), index=False)
         merged_data[name] = df_merge
 
-    end_date = pd.to_datetime("2021-12-31")
+    end_date = pd.to_datetime("2023-12-31")
     for name, df in merged_data.items():
         merged_trim = df[df["Date"] <= end_date].reset_index(drop=True)
         fname = f"{name.lower()}_enriched.csv"

@@ -32,18 +32,6 @@ COMMODITY_CATEGORIES = {
     'Agriculture': ['Wheat']
 }
 
-print("=" * 80)
-print("GARCH VOLATILITY MODELING WITH GEOPOLITICAL FEATURES")
-print("=" * 80)
-print("Models:")
-print("  1. Baseline: Return_t = μ + ε_t, ε_t ~ GARCH(1,1)")
-print("  2. Return_t = μ + β₁*geo_keyword_hits_t + ε_t, ε_t ~ GARCH(1,1)")
-print("  3. Return_t = μ + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
-print("  4. Return_t = μ + β₁*geo_t + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
-print("=" * 80)
-print("Testing: Do geopolitical factors predict commodity returns?")
-print("=" * 80)
-
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -834,6 +822,17 @@ def get_commodity_category(commodity_name):
 # ============================================================================
 
 def main():
+    print("=" * 80)
+    print("GARCH VOLATILITY MODELING WITH GEOPOLITICAL FEATURES")
+    print("=" * 80)
+    print("Models:")
+    print("  1. Baseline: Return_t = μ + ε_t, ε_t ~ GARCH(1,1)")
+    print("  2. Return_t = μ + β₁*geo_keyword_hits_t + ε_t, ε_t ~ GARCH(1,1)")
+    print("  3. Return_t = μ + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
+    print("  4. Return_t = μ + β₁*geo_t + β₂*GPRD_t + ε_t, ε_t ~ GARCH(1,1)")
+    print("=" * 80)
+    print("Testing: Do geopolitical factors predict commodity returns?")
+    print("=" * 80)
     print("\nLoading enriched data...")
     merged_data = {}
 

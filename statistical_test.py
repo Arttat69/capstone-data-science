@@ -13,13 +13,21 @@ ROOT = os.getcwd()
 DATA_DIR = os.path.join(ROOT, "data")
 MODEL_RESULTS_DIR = os.path.join(DATA_DIR, 'model_results')
 
-results_df = pd.read_csv(os.path.join(MODEL_RESULTS_DIR, 'lstm_gprd_comparison.csv'))
-
-print("="*80)
-print("STATISTICAL SIGNIFICANCE ANALYSIS")
-print("="*80)
-
 def main():
+
+    print("="*80)
+    print("STATISTICAL SIGNIFICANCE ANALYSIS")
+    print("="*80)
+
+    # Load results - check if file exists first
+    results_file = os.path.join(MODEL_RESULTS_DIR, 'lstm_gprd_comparison.csv')
+    if not os.path.exists(results_file):
+        print(f"\n[ERROR] Results file not found: {results_file}")
+        print("Please run the LSTM model first (lstm_model.py) to generate the results file.")
+        print("Skipping statistical tests...")
+        return
+
+    results_df = pd.read_csv(results_file)
 # ============================================================================
 # 1. PAIRED T-TEST: GPRD vs Baseline
 # ============================================================================
@@ -377,16 +385,14 @@ def main():
     print("   Interpretation: Heterogeneous effects cancel out when averaged")
 
     print("\n2. ENERGY VS NON-ENERGY (Primary finding):")
-    print(f"   p-value: 0.0400 - ✓ STATISTICALLY SIGNIFICANT")
-    print("   Interpretation: Energy commodities benefit from GPRD (+0.89 Sharpe)")
-    print("                   while non-energy commodities do not (-0.07 average)")
+    print(f"   p-value: 0.82 - ✓ Not significant")
 
     print("\n3. CLASS-SPECIFIC EFFECTS:")
-    print("   Energy (WTI, NatGas):     +0.891 Sharpe  [✓ Large positive]")
-    print("   Safe-Haven (Gold):        +0.198 Sharpe  [✓ Moderate positive]")
-    print("   Industrial (Copper):      -0.504 Sharpe  [✗ Large negative]")
-    print("   Technology (Lithium):     +0.002 Sharpe  [→ Neutral]")
-    print("   Agriculture (Wheat):      +0.014 Sharpe  [→ Neutral]")
+    print("   Energy (WTI, NatGas):     -0.029 Sharpe  [→ Neutral]")
+    print("   Safe-Haven (Gold):        +0.012 Sharpe  [→ Neutral]")
+    print("   Industrial (Copper):      -0.271 Sharpe  [✗ Negative]")
+    print("   Technology (Lithium):     +0.63 Sharpe  [✓ Largely Positive]")
+    print("   Agriculture (Wheat):      -0.19 Sharpe  [✗ Negative]")
 
     print("\n4. BOOTSTRAP VALIDATION:")
     print(f"   {prob_positive * 100:.1f}% probability of positive overall effect")
