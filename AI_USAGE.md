@@ -126,7 +126,7 @@ I certify that:
 
 The use of AI tools does not diminish the intellectual contribution required to:
 - Formulate a novel research question about geopolitical risk heterogeneity
-- Design an experimental framework comparing 12 models across 6 commodities
+- Design an experimental framework comparing models across 6 commodities
 - Interpret results to identify commodity class patterns
 - Recognize that traditional ML metrics (R²) poorly measure trading strategy quality
 

@@ -11,8 +11,9 @@ import seaborn as sns
 # Setup paths
 ROOT = os.getcwd()
 DATA_DIR = os.path.join(ROOT, "data")
-MODEL_RESULTS_DIR = os.path.join(DATA_DIR, 'model_results')
+MODEL_RESULTS_DIR_STAT = os.path.join(DATA_DIR, 'model_results_statistical_test')
 # Ensure directory exists
+MODEL_RESULTS_DIR = os.path.join(DATA_DIR, 'model_results')
 os.makedirs(MODEL_RESULTS_DIR, exist_ok=True)
 
 def main():
@@ -239,7 +240,7 @@ def main():
     ax4.grid(alpha=0.3, axis='x')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(MODEL_RESULTS_DIR, 'statistical_significance_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(MODEL_RESULTS_DIR_STAT, 'statistical_significance_analysis.png'), dpi=300, bbox_inches='tight')
     print(f"  ✓ Saved: statistical_significance_analysis.png")
 
     # ============================================================================
@@ -256,7 +257,7 @@ def main():
     print(summary_table.to_string(index=False))
 
     # Export to CSV
-    summary_table.to_csv(os.path.join(MODEL_RESULTS_DIR, 'gprd_impact_summary.csv'), index=False)
+    summary_table.to_csv(os.path.join(MODEL_RESULTS_DIR_STAT, 'gprd_impact_summary.csv'), index=False)
     print(f"\n✓ Saved: gprd_impact_summary.csv")
 
     # ============================================================================
