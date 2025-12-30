@@ -8,10 +8,12 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Load results
+# Setup paths
 ROOT = os.getcwd()
 DATA_DIR = os.path.join(ROOT, "data")
 MODEL_RESULTS_DIR = os.path.join(DATA_DIR, 'model_results')
+# Ensure directory exists
+os.makedirs(MODEL_RESULTS_DIR, exist_ok=True)
 
 def main():
 
