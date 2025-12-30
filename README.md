@@ -163,7 +163,7 @@ capstone-data-science/
 │
 ├── requirements.txt                  # Python dependencies
 ├── README.md                         # This file
-└── Report_v8_modified.md             # Full academic report (29k words)
+└── Report final.md                   # Full academic report (29k words)
 ```
 
 ---
