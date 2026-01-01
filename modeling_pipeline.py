@@ -493,7 +493,6 @@ def plot_results(regression_df, volatility_df, classification_df, holdout_df):
     plt.tight_layout()
     plt.savefig(os.path.join(MODEL_RESULTS_DIR_MOD, 'return_rmse_comparison.png'),
                 dpi=300, bbox_inches='tight')
-    plt.show()
 
     # 2. VOLATILITY: Mean RMSE across models and commodities
     plt.figure(figsize=(14, 8))
@@ -509,7 +508,6 @@ def plot_results(regression_df, volatility_df, classification_df, holdout_df):
     plt.tight_layout()
     plt.savefig(os.path.join(MODEL_RESULTS_DIR_MOD, 'volatility_rmse_comparison.png'),
                 dpi=300, bbox_inches='tight')
-    plt.show()
 
     # 3. COMPARISON: Returns vs Volatility R² (to show volatility is more predictable)
     fig, axes = plt.subplots(1, 2, figsize=(18, 6))
@@ -537,7 +535,6 @@ def plot_results(regression_df, volatility_df, classification_df, holdout_df):
     plt.tight_layout()
     plt.savefig(os.path.join(MODEL_RESULTS_DIR_MOD, 'returns_vs_volatility_r2.png'),
                 dpi=300, bbox_inches='tight')
-    plt.show()
 
     # 4. Classification metrics (unchanged)
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
@@ -558,7 +555,6 @@ def plot_results(regression_df, volatility_df, classification_df, holdout_df):
     plt.tight_layout()
     plt.savefig(os.path.join(MODEL_RESULTS_DIR_MOD, 'classification_metrics.png'),
                 dpi=300, bbox_inches='tight')
-    plt.show()
 
     # 5. Holdout performance for BOTH targets
     if holdout_df is not None and not holdout_df.empty:
@@ -589,7 +585,6 @@ def plot_results(regression_df, volatility_df, classification_df, holdout_df):
         plt.tight_layout()
         plt.savefig(os.path.join(MODEL_RESULTS_DIR_MOD, 'holdout_performance_complete.png'),
                     dpi=300, bbox_inches='tight')
-        plt.show()
 
 
 if __name__ == "__main__":

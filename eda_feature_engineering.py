@@ -49,7 +49,7 @@ price_cols = {
 def load_enriched_data():
     """Load all enriched commodity data files."""
     merged_data = {}
-    print("📂 Loading enriched data...")
+    print(" Loading enriched data...")
 
     for name in commodities:
         fname = f"{name.lower()}_enriched.csv"
@@ -63,7 +63,7 @@ def load_enriched_data():
         else:
             print(f"  ✗ Missing: {fname}")
 
-    print(f"\n✅ Loaded {len(merged_data)} commodities\n")
+    print(f"\n Loaded {len(merged_data)} commodities\n")
     return merged_data
 
 
@@ -76,7 +76,7 @@ def plot_correlation_heatmaps(merged_data):
     Create 6 correlation heatmaps (one per commodity) in a single figure.
     Highlights multicollinearity between GPRD and geo_keyword_hits.
     """
-    print("📊 Generating Appendix F: Correlation Heatmaps...")
+    print(" Generating Appendix F: Correlation Heatmaps...")
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     fig.suptitle('Feature Correlation Matrices by Commodity',
@@ -110,7 +110,7 @@ def plot_correlation_heatmaps(merged_data):
     plt.tight_layout(rect=[0, 0, 1, 0.98])
     save_path = os.path.join(APPENDIX_DIR, 'appendix_f_correlation_heatmaps.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"  ✅ Saved: {save_path}\n")
+    print(f"   Saved: {save_path}\n")
     plt.close()
 
 
@@ -123,7 +123,7 @@ def plot_volatility_with_events(merged_data):
     Plot Vol_5 with geopolitical event markers and GPRD overlay.
     Shows 3 key periods: 2008 crisis, COVID 2020, Ukraine 2022.
     """
-    print("📊 Generating Appendix G: Volatility with Events...")
+    print(" Generating Appendix G: Volatility with Events...")
 
     events = {
         '2008 Crisis': ('2008-01-01', '2009-12-31'),
@@ -135,14 +135,14 @@ def plot_volatility_with_events(merged_data):
 
     for name in commodities_to_plot:
         if name not in merged_data:
-            print(f"  ⚠️ Skipping {name} - not found")
+            print(f"  Skipping {name} - not found")
             continue
 
         df = merged_data[name].copy()
 
         # Check required columns
         if 'Vol_5' not in df.columns or 'GPRD' not in df.columns:
-            print(f"  ⚠️ Skipping {name} - missing Vol_5 or GPRD")
+            print(f"  Skipping {name} - missing Vol_5 or GPRD")
             continue
 
         fig, ax1 = plt.subplots(figsize=(14, 6))
@@ -183,7 +183,7 @@ def plot_volatility_with_events(merged_data):
         plt.tight_layout()
         save_path = os.path.join(APPENDIX_DIR, f'appendix_g_volatility_{name.lower()}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"  ✅ Saved: {save_path}")
+        print(f"  Saved: {save_path}")
         plt.close()
 
     print()
@@ -198,7 +198,7 @@ def plot_feature_distributions(merged_data):
     Create clean histogram grid showing feature distributions for all commodities.
     Emphasizes heavy-tailed returns and GPRD skewness.
     """
-    print("📊 Generating Appendix H: Feature Distributions...")
+    print(" Generating Appendix H: Feature Distributions...")
 
     fig, axes = plt.subplots(6, 5, figsize=(20, 18))
     fig.suptitle('Feature Distributions Across Commodities',
@@ -244,7 +244,7 @@ def plot_feature_distributions(merged_data):
     plt.tight_layout(rect=[0, 0, 1, 0.99])
     save_path = os.path.join(APPENDIX_DIR, 'appendix_h_feature_distributions.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"  ✅ Saved: {save_path}\n")
+    print(f"  Saved: {save_path}\n")
     plt.close()
 
 
@@ -257,13 +257,13 @@ def plot_timeseries_simplified(merged_data, price_cols):
     Simplified time series: Price + Vol_5 (axis 1), GPRD + geo_keyword_hits (axis 2).
     Shows 3 representative commodities to illustrate heterogeneity.
     """
-    print("📊 Generating Appendix I: Time Series Evolution...")
+    print(" Generating Appendix I: Time Series Evolution...")
 
     commodities_to_plot = ['WTI', 'Wheat', 'Copper']
 
     for name in commodities_to_plot:
         if name not in merged_data:
-            print(f"  ⚠️ Skipping {name} - not found")
+            print(f"   Skipping {name} - not found")
             continue
 
         df = merged_data[name].copy()
@@ -273,7 +273,7 @@ def plot_timeseries_simplified(merged_data, price_cols):
         required = ['Date', 'Vol_5', 'GPRD', 'geo_keyword_hits']
         missing = [col for col in required if col not in df.columns]
         if missing or price_col not in df.columns:
-            print(f"  ⚠️ Skipping {name} - missing columns: {missing + [price_col]}")
+            print(f"   Skipping {name} - missing columns: {missing + [price_col]}")
             continue
 
         fig, ax1 = plt.subplots(figsize=(16, 7))
@@ -325,7 +325,7 @@ def plot_timeseries_simplified(merged_data, price_cols):
         plt.tight_layout()
         save_path = os.path.join(APPENDIX_DIR, f'appendix_i_timeseries_{name.lower()}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"  ✅ Saved: {save_path}")
+        print(f"  Saved: {save_path}")
         plt.close()
 
 def plot_event_timeline_alignment(
@@ -351,12 +351,12 @@ def plot_event_timeline_alignment(
         }
 
     if commodity not in merged_data:
-        print(f" ⚠️ Skipping timeline - {commodity} not found")
+        print(f" Skipping timeline - {commodity} not found")
         return
 
     df = merged_data[commodity].copy()
     if "Date" not in df.columns:
-        print(f" ⚠️ Skipping {commodity} - missing Date column")
+        print(f" Skipping {commodity} - missing Date column")
         return
 
     df["Date"] = pd.to_datetime(df["Date"])
@@ -366,13 +366,13 @@ def plot_event_timeline_alignment(
     required_cols = ["GPRD"]
     missing = [c for c in required_cols if c not in df.columns]
     if price_col is None or price_col not in df.columns or missing:
-        print(f" ⚠️ Skipping {commodity} - missing columns: {missing + [price_col]}")
+        print(f" Skipping {commodity} - missing columns: {missing + [price_col]}")
         return
 
     # Build spike proxy
     if spike_proxy == "vol_5":
         if "Vol_5" not in df.columns:
-            print(f" ⚠️ spike_proxy='vol_5' requested but Vol_5 missing for {commodity}")
+            print(f"  spike_proxy='vol_5' requested but Vol_5 missing for {commodity}")
             return
         spike_series = df["Vol_5"].astype(float)
         spike_label = "Volatility spike (Vol_5)"
@@ -493,7 +493,7 @@ def plot_event_timeline_alignment(
     plt.tight_layout()
     save_path = os.path.join(output_dir, f"appendix_j_timeline_lag_{commodity.lower()}.png")
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    print(f" ✅ Saved: {save_path}")
+    print(f" Saved: {save_path}")
 
     # Optional console summary
     if annotations:
@@ -511,7 +511,7 @@ def plot_event_timeline_alignment(
 
 def run_original_eda(merged_data, price_cols):
     """Original EDA code from your script - kept for reference."""
-    print("📊 Running Original EDA...")
+    print(" Running Original EDA...")
 
     for name, df in merged_data.items():
         print(f"\n--- EDA for {name} ---")
@@ -543,7 +543,7 @@ def run_original_eda(merged_data, price_cols):
             print(f"  ADF Statistic: {adf_result[0]:.3f}, p-value: {adf_result[1]:.3e}")
             print(f"  {'Stationary' if adf_result[1] < 0.05 else 'Not stationary'}")
 
-    print("\n✅ Original EDA complete\n")
+    print("\n Original EDA complete\n")
 
 
 # =============================================================================
@@ -561,7 +561,7 @@ def main():
     merged_data = load_enriched_data()
 
     if not merged_data:
-        print("❌ No data loaded. Please check your enriched data files.")
+        print(" No data loaded. Please check your enriched data files.")
         return
 
     # Generate 4 publication-quality appendix figures
@@ -570,22 +570,22 @@ def main():
     try:
         plot_correlation_heatmaps(merged_data)
     except Exception as e:
-        print(f"  ❌ Error in correlation heatmaps: {e}\n")
+        print(f"   Error in correlation heatmaps: {e}\n")
 
     try:
         plot_volatility_with_events(merged_data)
     except Exception as e:
-        print(f"  ❌ Error in volatility plots: {e}\n")
+        print(f"   Error in volatility plots: {e}\n")
 
     try:
         plot_feature_distributions(merged_data)
     except Exception as e:
-        print(f"  ❌ Error in distributions: {e}\n")
+        print(f"   Error in distributions: {e}\n")
 
     try:
         plot_timeseries_simplified(merged_data, price_cols)
     except Exception as e:
-        print(f"  ❌ Error in time series: {e}\n")
+        print(f"   Error in time series: {e}\n")
 
     try:
         # Appendix J: Timeline alignment + lag (presentation-style)
@@ -593,10 +593,10 @@ def main():
         plot_event_timeline_alignment(merged_data, price_cols, APPENDIX_DIR, commodity="Wheat")
         plot_event_timeline_alignment(merged_data, price_cols, APPENDIX_DIR, commodity="Gold")
     except Exception as e:
-        print(f" ❌ Error in timeline alignment plot: {e}\n")
+        print(f"  Error in timeline alignment plot: {e}\n")
 
     print("=" * 70)
-    print(f"✅ ALL APPENDIX FIGURES SAVED TO: {APPENDIX_DIR}")
+    print(f" ALL APPENDIX FIGURES SAVED TO: {APPENDIX_DIR}")
     print("=" * 70)
     print("\nReference in text:")
     print("  - Appendix F: Correlation matrices (multicollinearity evidence)")

@@ -1,4 +1,4 @@
-# Geopolitics and Commodities: Forecasting Volatility with Deep Learning and Geopolitical Risk Indices
+# Geopolitics and Commodities: From Predictive Forecasting to Statistical Association 
 
 **Author:** Arthur Taton (N° 24441123)  
 **Course:** Data Science Capstone Project  
@@ -149,11 +149,12 @@ capstone-data-science/
 │   ├── enriched/                     # Final datasets with 21+ features
 │   │   └── [commodity]_enriched.csv
 │   │
-│   └── output/                       # Results
-│       ├── appendix_plots/           # EDA visualizations
-│       ├── model_results/            # LSTM/GARCH outputs
-│       └── lstm_plots/               # Training curves, predictions
-│
+│   └── output/                              # Results
+│       ├── appendix_plots/                  # EDA visualizations
+│       ├── model_results/                   # LSTM/GARCH outputs
+│       ├── model_results_modelling/         # Vol and Return prediction with RF and LR
+│       └── model_results_statistical_test/  # Sharpe ratio comparison
+│ 
 ├── 01_data_collection.py             # Download + merge + sentiment analysis
 ├── 02_eda_feature_engineering.py     # Generate diagnostic plots
 ├── 03_modeling_pipeline.py           # Classical ML baselines
@@ -172,7 +173,7 @@ capstone-data-science/
 
 ### Prerequisites
 
-- **Python 3.13+** (recommended; tested on 3.13)
+- **Python 3.12+** (recommended; tested on 3.12)
 - **Kaggle API credentials** (optional; datasets are pre-downloaded)
 - **8GB RAM minimum** (LSTM training can be memory-intensive)
 - **macOS, Linux, or Windows**
@@ -187,8 +188,8 @@ cd capstone-data-science
 ### Step 2: Create Virtual Environment (Recommended)
 
 ```bash
-# Python 3.13
-python3.13 -m venv venv
+# Python 3.12
+python3.12 -m venv venv
 source venv/bin/activate  # Linux/Mac
 # OR
 venv\Scripts\activate  # Windows
