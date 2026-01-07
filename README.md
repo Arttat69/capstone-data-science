@@ -717,7 +717,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Caldara & Iacoviello** for making GPRI publicly available
 - **Yahoo Finance** for free financial data API
 - **Kaggle community** for news headline datasets
-- **TensorFlow & Keras teams** for excellent deep learning tools
+- **TensorFlow & Keras teams** for deep learning tools
 - **ARCH library maintainers** for GARCH model implementation
 
 ---
